@@ -1,29 +1,6 @@
 version: '3.9'
 
 services:
-  db:
-    image: mysql:8.0
-    container_name: mysql_server
-    restart: always
-    environment:
-      MYSQL_ROOT_PASSWORD: your_strong_root_password
-      MYSQL_DATABASE: my_app_db
-      MYSQL_USER: user_name
-      MYSQL_PASSWORD: user_password
-    ports:
-      - "3307:3306"
-    volumes:
-      - db_data:/var/lib/mysql
-    networks:
-      - evolution_net
-
-  redis:
-    image: redis:latest
-    container_name: evolution_redis
-    restart: always
-    networks:
-      - evolution_net
-
   evolution-api:
     container_name: evolution_api
     image: atendai/evolution-api:v2.1.1
@@ -33,10 +10,16 @@ services:
     env_file:
       - .env
     depends_on:
-      - db
       - redis
     volumes:
       - evolution_instances:/evolution/instances
+    networks:
+      - evolution_net
+
+  redis:
+    image: redis:latest
+    container_name: evolution_redis
+    restart: always
     networks:
       - evolution_net
 
@@ -54,7 +37,6 @@ services:
       - evolution-api
 
 volumes:
-  db_data:
   evolution_instances:
 
 networks:

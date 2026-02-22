@@ -36,72 +36,66 @@ def get_db():
         yield db
     finally:
         db.close()
-
 @app.post("/webhook")
 async def handle_whatsapp(request: Request):
-    logger.info("Received webhook request")
     data = await request.json()
     db = SessionLocal()
     
     try:
-        # 1. Extract message details
-        message = data['entry'][0]['changes'][0]['value']['messages'][0]
-        sender = message['from']
-        text = message['text']['body'].lower()
+        # Evolution API sends events. We only care about new messages.
+        if data.get("event") != "messages.upsert":
+            return {"status": "ignored"}
 
-        # 2. Fetch or Create User State
+        # Extract details for Evolution API structure
+        message_data = data['data']
+        sender = message_data['key']['remoteJid'].split('@')[0] # Gets '23480...'
+        text = message_data.get('message', {}).get('conversation', '').lower()
+
+        # State Machine Logic
         user = db.query(UserState).filter(UserState.phone_number == sender).first()
         if not user:
-            user = UserState(phone_number=sender)
+            user = UserState(phone_number=sender, state="idle")
             db.add(user)
-            db.commit()
 
-        # 3. State Machine Logic
         reply = ""
-        
         if text == "apply":
-            user.state = "leave_application" # Using your specific state name
+            user.state = "leave_application" # Your requested state name
             user.step = "awaiting_reason"
             reply = "Starting your leave application. Please state the reason for leave."
         
         elif user.state == "leave_application":
             if user.step == "awaiting_reason":
-                user.data = {"reason": text}
+                user.temp_data = json.dumps({"reason": text}) # JSON string for DB
                 user.step = "awaiting_date"
                 reply = "Got it. What is the start date (YYYY-MM-DD)?"
             elif user.step == "awaiting_date":
-                user.data["date"] = text
-                user.state = "idle" # Reset after finishing
+                # Finalizing application
+                user.state = "idle"
                 user.step = None
-                reply = f"Thank you! Your leave for '{user.data['reason']}' on {text} has been submitted."
+                reply = f"Thank you! Your leave request has been submitted."
 
         else:
-            reply = "Welcome! Type 'apply' to start a leave application."
+            reply = "Welcome! Type 'apply' to start."
 
-        # 4. Save changes and Send reply
         db.commit()
-        send_whatsapp_response(sender, reply)
+        # Use Evolution API to send the reply
+        send_evolution_response(sender, reply)
 
     except Exception as e:
-        logger.error(f"Error processing message: {e}")
+        logger.error(f"Error: {traceback.format_exc()}")
+    finally:
+        db.close()
     
     return {"status": "success"}
-PHONE_NUMBER_ID = "1234567890"
-ACCESS_TOKEN = "your_access_token"
-def send_whatsapp_response(to_number, text):
+
+def send_evolution_response(to_number, text):
     """
-    Sends a message back to the user via Meta's Graph API.
+    Sends a message via YOUR Evolution API (Not Meta).
     """
-    url = f"https://graph.facebook.com/v18.0/{PHONE_NUMBER_ID}/messages"
-    headers = {
-        "Authorization": f"Bearer {ACCESS_TOKEN}",
-        "Content-Type": "application/json"
-    }
+    url = f"{os.getenv('EVO_URL')}/message/sendText/{os.getenv('EVO_INSTANCE')}"
+    headers = {"apikey": os.getenv("AUTHENTICATION_API_KEY")}
     payload = {
-        "messaging_product": "whatsapp",
-        "to": to_number,
-        "type": "text",
-        "text": {"body": text}
+        "number": to_number,
+        "text": text
     }
-    response = requests.post(url, headers=headers, json=payload)
-    return response.json()
+    return requests.post(url, json=payload, headers=headers)
