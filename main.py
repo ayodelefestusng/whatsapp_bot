@@ -29,10 +29,12 @@ else:
 
 engine = create_async_engine(
     DATABASE_URL,
-    echo=True,
-    connect_args={"ssl": True}
+    echo=False,
+    connect_args={
+        "ssl": True,
+        "connect_timeout": 10
+    }
 )
-
 
 AsyncSessionLocal = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 Base = declarative_base()
