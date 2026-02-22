@@ -11,14 +11,25 @@ load_dotenv()
 
 app = FastAPI()
 
-# 1. Database Setup
+
 DATABASE_URL = os.getenv("DATABASE_URL")
-# Add connect_args to handle SSL specifically for aiomysql
+
+# --- DEBUGGING PRINT ---
+if DATABASE_URL is None:
+    print("❌ ERROR: DATABASE_URL variable is missing from the environment!")
+else:
+    print(f"✅ DATABASE_URL found: {DATABASE_URL[:15]}...") 
+# -----------------------
+
 engine = create_async_engine(
-    DATABASE_URL, 
+    DATABASE_URL or "sqlite+aiosqlite:///:memory:", # Fallback to prevent crash if None
     pool_pre_ping=True,
-    connect_args={"ssl": True} 
+    connect_args={"ssl": True} if DATABASE_URL and "mysql" in DATABASE_URL else {}
 )
+
+
+
+
 AsyncSessionLocal = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 Base = declarative_base()
 
