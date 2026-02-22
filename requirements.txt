@@ -2,6 +2,10 @@ fastapi
 uvicorn
 requests
 sqlalchemy
-aiomysql
 python-dotenv
 cryptography
+
+
+
+httpx
+mysql-connector-python
