@@ -21,13 +21,17 @@ else:
     print(f"✅ DATABASE_URL found: {DATABASE_URL[:15]}...") 
 # -----------------------
 
+# engine = create_async_engine(
+#     DATABASE_URL or "sqlite+aiosqlite:///:memory:", # Fallback to prevent crash if None
+#     pool_pre_ping=True,
+#     connect_args={"ssl": True} if DATABASE_URL and "mysql" in DATABASE_URL else {}
+# )
+
 engine = create_async_engine(
-    DATABASE_URL or "sqlite+aiosqlite:///:memory:", # Fallback to prevent crash if None
-    pool_pre_ping=True,
-    connect_args={"ssl": True} if DATABASE_URL and "mysql" in DATABASE_URL else {}
+    DATABASE_URL,
+    echo=True,
+    connect_args={"ssl": True}
 )
-
-
 
 
 AsyncSessionLocal = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
