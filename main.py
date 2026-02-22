@@ -99,3 +99,9 @@ def send_evolution_response(to_number, text):
         "text": text
     }
     return requests.post(url, json=payload, headers=headers)
+
+
+
+@app.get("/")
+async def root():
+    return {"status": "online", "message": "WhatsApp Bot is active and waiting for webhooks"}
