@@ -5,16 +5,46 @@ import json
 from sqlalchemy import create_engine, Column, Integer, String, Text
 from sqlalchemy.orm import sessionmaker, declarative_base
 from dotenv import load_dotenv
-
+import os
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
+from sqlalchemy.orm import sessionmaker, declarative_base
+from sqlalchemy import Column, Integer, String, Text
+from dotenv import load_dotenv
 load_dotenv()
 
 app = FastAPI()
-
+# This pulls the URI from your Railway Variables
+DATABASE_URL = os.getenv("DATABASE_URL")
 # Database Setup
-engine = create_engine(os.getenv("DATABASE_URL"))
-SessionLocal = sessionmaker(bind=engine)
-Base = declarative_base()
+# engine = create_engine(os.getenv("DATABASE_URL"))
+load_dotenv()
 
+# This pulls the URI from your Railway Variables
+DATABASE_URL = os.getenv("DATABASE_URL")
+
+# Create the Engine for Aiven MySQL
+engine = create_async_engine(
+    DATABASE_URL,
+    pool_pre_ping=True, # Checks if connection is alive before using it
+)
+
+AsyncSessionLocal = sessionmaker(
+    engine, 
+    class_=AsyncSession, 
+    expire_on_commit=False
+)
+
+Base = declarative_base()
+SessionLocal = sessionmaker(bind=engine)
+
+
+@app.on_event("startup")
+async def startup():
+    async with engine.begin() as conn:
+        # This creates the table if it doesn't exist
+        await conn.run_sync(Base.metadata.create_all)
+    print("Database tables created successfully!")
+    
 class UserState(Base):
     __tablename__ = "user_states"
     id = Column(Integer, primary_key=True)

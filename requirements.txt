@@ -6,6 +6,6 @@ python-dotenv
 cryptography
 
 
-
+aiomysql
 httpx
 mysql-connector-python
