@@ -2,6 +2,7 @@ from fastapi import FastAPI, Request
 import httpx
 import os
 import json
+import re
 from sqlalchemy import Column, Integer, String, Text, select
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker, declarative_base
@@ -40,13 +41,47 @@ else:
 #     connect_args={"ssl": True} if DATABASE_URL and "mysql" in DATABASE_URL else {}
 # )
 
+# Prepare async-capable DATABASE_URL. SQLAlchemy async engines require an async DBAPI
+# (aiomysql or asyncmy) for MySQL. If the provided DATABASE_URL references a sync driver
+# (e.g., mysql:// or mysql+mysqldb://), try to convert it to use an async driver.
+engine_url = DATABASE_URL
+
+if engine_url and engine_url.startswith("mysql"):
+    # Prefer aiomysql, fallback to asyncmy if available
+    async_driver = None
+    try:
+        import aiomysql  # type: ignore
+        async_driver = "aiomysql"
+    except Exception:
+        try:
+            import asyncmy  # type: ignore
+            async_driver = "asyncmy"
+        except Exception:
+            async_driver = None
+
+    if async_driver:
+        # Replace scheme prefix with async driver variant, e.g. mysql:// -> mysql+aiomysql://
+        engine_url = re.sub(r"^mysql(\+[^:]*)?:", f"mysql+{async_driver}:", engine_url)
+        print(f"ℹ️ Using async MySQL driver: {async_driver}")
+    else:
+        msg = (
+            "No async MySQL driver is installed. Install one with: `pip install aiomysql` "
+            "or `pip install asyncmy`.\n" 
+            "If you prefer to use sqlite for local development, set `DATABASE_URL` to a "
+            "`sqlite+aiosqlite:///:memory:` (or similar) in your environment."
+        )
+        print(f"⚠️ {msg}")
+        # Fail fast so the deployer or developer sees a clear message rather than silently
+        # falling back to sqlite. This prevents accidental use of an unintended DB.
+        raise RuntimeError(msg)
+
 engine = create_async_engine(
-    DATABASE_URL,
+    engine_url,
     echo=False,
     connect_args={
         "ssl": True,
         "connect_timeout": 10
-    }
+    } if engine_url.startswith("mysql+") else {}
 )
 
 AsyncSessionLocal = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
