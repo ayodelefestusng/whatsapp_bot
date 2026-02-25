@@ -8,3 +8,4 @@ aiomysql
 httpx
 mysql-connector-python
 aiosqlite
+MySQLdb
