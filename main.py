@@ -9,6 +9,19 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+# Ensure a MySQL DBAPI is available. If `MySQLdb` (mysqlclient) is missing,
+# try to use `pymysql` as a drop-in replacement so SQLAlchemy can import
+# the `MySQLdb` module name.
+try:
+    import MySQLdb  # noqa: F401
+except Exception:
+    try:
+        import pymysql
+        pymysql.install_as_MySQLdb()
+        print("ℹ️ Using pymysql as MySQLdb shim")
+    except Exception as e:
+        print(f"⚠️ MySQLdb import failed and pymysql is not available: {e}")
+
 app = FastAPI()
 
 
