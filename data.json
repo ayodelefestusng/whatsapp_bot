@@ -1,0 +1,5 @@
+{
+  "instanceName": "whatsapp_bot",
+  "qrcode": true,
+  "integration": "WHATSAPP-BAILEYS"
+}

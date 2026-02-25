@@ -135,3 +135,12 @@ async def send_msg(number, text):
 @app.get("/")
 async def root():
     return {"status": "online", "database": "connected"}
+
+
+
+
+#Utility Endpoints   
+
+@app.get("/utility/")
+def read_root():
+    return {"message": "Hello from ATB AI!"}
