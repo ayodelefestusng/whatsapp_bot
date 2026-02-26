@@ -191,7 +191,7 @@ async def webhook(request: Request):
     return {"status": "success"}
 
 
-#Utility Endpoints   
+#Utility Endpointsd   
 
 @app.get("/utility/")
 def read_root():
