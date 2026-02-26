@@ -185,7 +185,10 @@ app=FastAPI()
 async def root():
     return {"status": "online", "database": "connected"}
 
-cd
+@app.post("/webhook")
+async def webhook(request: Request):
+    data = await request.json()
+    return {"status": "success"}
 
 
 #Utility Endpoints   
